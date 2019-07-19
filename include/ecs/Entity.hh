@@ -1,10 +1,9 @@
 #pragma once
 
+#include <functional>
 #include <ostream>
 #include "ecs/Common.hh"
 #include "ecs/Subscription.hh"
-
-
 
 namespace ecs
 {

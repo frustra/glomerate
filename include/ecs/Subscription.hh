@@ -1,8 +1,14 @@
 #pragma once
 
-#include <boost/signals2.hpp>
+#include <list>
 
 namespace ecs {
+
+	class Entity;
+	class EntityManager;
+
+	typedef std::function<void(Entity, void *)> GenericEntityCallback;
+	typedef std::function<void(void *)> GenericCallback;
 
 	/**
 	 * Lightweight class that represents a subscription to a type of event
@@ -10,7 +16,8 @@ namespace ecs {
 	class Subscription {
 	public:
 		Subscription();
-		Subscription(boost::signals2::connection c);
+		Subscription(EntityManager *manaager, std::list<GenericEntityCallback> *list, std::list<GenericEntityCallback>::iterator &c);
+		Subscription(EntityManager *manaager, std::list<GenericCallback> *list, std::list<GenericCallback>::iterator &c);
 		Subscription(const Subscription &other) = default;
 
 		/**
@@ -26,8 +33,12 @@ namespace ecs {
 		 * deallocate the associated callback after calling this function.
 		 * Always safe to call, even if the subscription is not active.
 		 */
-		void Unsubscribe() const;
+		void Unsubscribe();
 	private:
-		boost::signals2::connection connection;
+		EntityManager *manager = nullptr;
+		std::list<GenericEntityCallback> *entityConnectionList = nullptr;
+		std::list<GenericEntityCallback>::iterator entityConnection;
+		std::list<GenericCallback> *connectionList = nullptr;
+		std::list<GenericCallback>::iterator connection;
 	};
 }

@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <boost/signals2.hpp>
 
 #include <functional>
 
@@ -175,7 +174,7 @@ namespace test
 					x += 1;
 				}
 			}
-			std::array<int64, 32> nums = {0};
+			std::array<int64, 32> nums = {};
 		};
 
 		class Functor2 {
@@ -185,7 +184,7 @@ namespace test
 					x += 2;
 				}
 			}
-			std::array<int64, 16> nums = {0};
+			std::array<int64, 16> nums = {};
 		};
 
 		auto f1a = Functor1();

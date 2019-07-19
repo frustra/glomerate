@@ -248,6 +248,4 @@ googletest library is used to help with testing and it will automatically be clo
 
 Glomerate uses the MIT license. See LICENSE for more details.
 
-It also uses part of boost so the Boost license also applies. This can be seen in ext/boost/LICENSE_1_0.txt
-
 If you build the tests then googletest and googlemock will be retrieved which are governed by their own open source licenses. This can be seen in ext/googletest/googletest/LICENSE and ext/googletest/googlemock/LICENSE.

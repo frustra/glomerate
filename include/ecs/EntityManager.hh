@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <functional>
-#include <boost/signals2.hpp>
+#include <mutex>
 
 #include "ecs/Common.hh"
 #include "ComponentManager.hh"
@@ -216,6 +216,9 @@ namespace ecs
 		template <typename Event>
 		void Emit(const Event &event);
 
+	protected:
+		std::recursive_mutex signalLock;
+
 	private:
 		/**
 		 * The current (if index is alive) or next (if index is dead) generation
@@ -245,7 +248,7 @@ namespace ecs
 		 * template <typename Event>
 		 * signals2::signal<void(Entity, const Event &)>
 		 */
-		typedef boost::signals2::signal<void(Entity, void *)> GenericSignal;
+		typedef std::list<GenericEntityCallback> GenericSignal;
 		vector<GenericSignal> eventSignals;
 
 		/**
@@ -262,7 +265,7 @@ namespace ecs
 		GLOMERATE_MAP_TYPE<std::type_index, uint32>
 			eventTypeToNonEntityEventIndex;
 
-		typedef boost::signals2::signal<void(void *)> NonEntitySignal;
+		typedef std::list<GenericCallback> NonEntitySignal;
 		vector<NonEntitySignal> nonEntityEventSignals;
 
 
@@ -272,7 +275,6 @@ namespace ecs
 		typedef GLOMERATE_MAP_TYPE<std::type_index, GenericSignal> SignalMap;
 		GLOMERATE_MAP_TYPE<Entity::Id, SignalMap> entityEventSignals;
 
-	private:
 		/**
 		 * Allocates storage space for subscribers for a new type of Event
 		 * and assigns that Event an index in this->eventTypeToEventIndex.
@@ -289,23 +291,6 @@ namespace ecs
 		template <typename Event>
 		void registerNonEntityEventType();
 
-		/**
-		 * Given the index in this->eventSignals, return
-		 * this->eventSignals.at(eventIndex) with the signal casted to
-		 * the proper calling type. This performs a reinterpret_cast to convert
-		 * the signal type but this is okay
-		 * because different signal call signatures have the same size.
-		 */
-		template <typename Event>
-		boost::signals2::signal<void(Entity, const Event &)> &
-		getSignal(boost::signals2::signal<void(Entity, void *)> &sig);
-
-		/**
-		 * Retrieves the signals2::signal for the Event specific to @entity.
-		 * If one does not exist then it will be created and returned.
-		 */
-		template <typename Event>
-		boost::signals2::signal<void(Entity, const Event &)> &
-		getOrCreateEntitySignal(Entity::Id entity);
+		friend Subscription;
 	};
 };

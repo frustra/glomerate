@@ -100,8 +100,6 @@ namespace ecs
 
 	inline void EntityManager::Destroy(Entity::Id e)
 	{
-		typedef boost::signals2::signal<void(Entity, void *)> GenericSig;
-
 		if (!Valid(e))
 		{
 			std::stringstream ss;
@@ -118,8 +116,7 @@ namespace ecs
 		// detach any subscribers listening for events on this entity
 		if (entityEventSignals.count(e) > 0) {
 			for (auto &kv : entityEventSignals[e]) {
-				GenericSig &signal = kv.second;
-				signal.disconnect_all_slots();
+				kv.second.clear();
 			}
 
 			entityEventSignals.erase(e);
@@ -240,17 +237,17 @@ namespace ecs
 			nonEntityEventIndex = eventTypeToNonEntityEventIndex.at(eventType);
 		}
 
+		std::lock_guard<std::recursive_mutex> lock(signalLock);
 		auto &signal = nonEntityEventSignals.at(nonEntityEventIndex);
-		boost::signals2::connection c = signal.connect(callback);
+		auto connection = signal.insert(signal.end(), *reinterpret_cast<GenericCallback *>(&callback));
 
-		return Subscription(c);
+		return Subscription(this, &signal, connection);
 	}
 
 	template <typename Event>
 	Subscription EntityManager::Subscribe(
 		std::function<void(Entity, const Event &)> callback)
 	{
-		typedef boost::signals2::signal<void(Entity, const Event &)> EventSignal;
 		std::type_index eventType = typeid(Event);
 
 		uint32 eventIndex;
@@ -266,10 +263,11 @@ namespace ecs
 			eventIndex = eventTypeToEventIndex.at(eventType);
 		}
 
-		EventSignal &signal = getSignal<Event>(eventSignals.at(eventIndex));
-		boost::signals2::connection c = signal.connect(callback);
+		std::lock_guard<std::recursive_mutex> lock(signalLock);
+		auto &signal = eventSignals.at(eventIndex);
+		auto connection = signal.insert(signal.end(), *reinterpret_cast<GenericEntityCallback *>(&callback));
 
-		return Subscription(c);
+		return Subscription(this, &signal, connection);
 	}
 
 	template <typename Event>
@@ -277,54 +275,44 @@ namespace ecs
 		std::function<void(Entity, const Event &e)> callback,
 		Entity::Id entity)
 	{
-		auto &eventSignal = getOrCreateEntitySignal<Event>(entity);
-		boost::signals2::connection &&c = eventSignal.connect(callback);
-
-		return Subscription(c);
-	}
-
-	template <typename Event>
-	boost::signals2::signal<void(Entity, const Event &)> &
-	EntityManager::getOrCreateEntitySignal(Entity::Id entity)
-	{
-		typedef boost::signals2::signal<void(Entity, void *)> GenericSig;
-		typedef boost::signals2::signal<void(Entity, const Event &)> EventSig;
-
-		GenericSig &genSignal = entityEventSignals[entity][typeid(Event)];
-		EventSig &eventSignal = getSignal<Event>(genSignal);
-		return eventSignal;
-	}
-
-	template <typename Event>
-	boost::signals2::signal<void(Entity, const Event &)> &
-	EntityManager::getSignal(boost::signals2::signal<void(Entity, void *)> &sig)
-	{
-		// reinterpret_cast is okay here since only difference is the
-		// call signature of the stored functions, which does not affect size
-		typedef boost::signals2::signal<void(Entity, const Event &)> EventSignal;
-		return *reinterpret_cast<EventSignal *>(&sig);
+		auto &signal = entityEventSignals[entity][typeid(Event)];
+		auto connection = signal.insert(signal.end(), *reinterpret_cast<GenericEntityCallback *>(&callback));
+		return Subscription(this, &signal, connection);
 	}
 
 	template <typename Event>
 	void EntityManager::Emit(Entity::Id e, const Event &event)
 	{
-		typedef boost::signals2::signal<void(Entity, const Event &)> EventSignal;
 		std::type_index eventType = typeid(Event);
 		Entity entity(this, e);
+
+		std::lock_guard<std::recursive_mutex> lock(signalLock);
 
 		// signal the generic Event subscribers
 		if (eventTypeToEventIndex.count(eventType) > 0)
 		{
 			auto eventIndex = eventTypeToEventIndex.at(eventType);
-			EventSignal &signal = getSignal<Event>(eventSignals.at(eventIndex));
-			signal(entity, event);
+			auto &signal = eventSignals.at(eventIndex);
+			auto connection = signal.begin();
+			while (connection != signal.end())
+			{
+				auto callback = (*reinterpret_cast<std::function<void(Entity, const Event &)> *>(&(*connection)));
+				connection++;
+				callback(entity, event);
+			}
 		}
 
 		// now signal the entity-specific Event subscribers
 		if (entityEventSignals.count(e) > 0) {
 			if (entityEventSignals[e].count(eventType) > 0) {
-				auto &eventSignal = getOrCreateEntitySignal<Event>(e);
-				eventSignal(entity, event);
+				auto &signal = entityEventSignals[e][typeid(Event)];
+				auto connection = signal.begin();
+				while (connection != signal.end())
+				{
+					auto callback = (*reinterpret_cast<std::function<void(Entity, const Event &)> *>(&(*connection)));
+					connection++;
+					callback(entity, event);
+				}
 			}
 		}
 	}
@@ -332,15 +320,21 @@ namespace ecs
 	template <typename Event>
 	void EntityManager::Emit(const Event &event)
 	{
-		typedef boost::signals2::signal<void(const Event &)> EventSignal;
 		std::type_index eventType = typeid(Event);
+
+		std::lock_guard<std::recursive_mutex> lock(signalLock);
 
 		if (eventTypeToNonEntityEventIndex.count(eventType) > 0)
 		{
 			auto eventIndex = eventTypeToNonEntityEventIndex.at(eventType);
-			auto &sig = nonEntityEventSignals.at(eventIndex);
-			EventSignal &signal = *reinterpret_cast<EventSignal *>(&sig);
-			signal(event);
+			auto &signal = nonEntityEventSignals.at(eventIndex);
+			auto connection = signal.begin();
+			while (connection != signal.end())
+			{
+				auto callback = (*reinterpret_cast<std::function<void(const Event &)> *>(&(*connection)));
+				connection++;
+				callback(event);
+			}
 		}
 	}
 }
