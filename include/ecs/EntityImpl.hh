@@ -42,6 +42,16 @@ namespace ecs
 		return this->id < other.id;
 	}
 
+	inline bool Entity::Id::operator!() const
+	{
+		return this->id == NULL_ID;
+	}
+
+	inline Entity::Id::operator bool() const
+	{
+		return this->id != NULL_ID;
+	}
+
 	inline std::ostream &operator<<(std::ostream &os, const Entity::Id e)
 	{
 		os << e.ToString();
@@ -111,6 +121,15 @@ namespace ecs
 		return em->Assign<CompType>(this->eid, args...);
 	}
 
+	template <typename KeyType, typename ...T>
+	Handle<KeyType> Entity::AssignKey(T... args)
+	{
+		if (em == nullptr) {
+			throw runtime_error("Cannot assign component to NULL Entity");
+		}
+		return em->AssignKey<KeyType>(this->eid, args...);
+	}
+
 	template <typename CompType>
 	void Entity::Remove()
 	{
@@ -124,6 +143,12 @@ namespace ecs
 	bool Entity::Has() const
 	{
 		return (em != nullptr) && em->Has<CompType>(this->eid);
+	}
+
+	template <typename KeyType>
+	bool Entity::Has(const KeyType &key) const
+	{
+		return (em != nullptr) && em->Has<KeyType>(this->eid, key);
 	}
 
 	template <typename CompType>

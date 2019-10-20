@@ -48,12 +48,15 @@ namespace ecs
 				ComponentPoolEntityCollection::Iterator compIt;
 			};
 
+			// Empty collection
+			EntityCollection(EntityManager &em);
+
 			// An IterateLock on compEntColl's component pool is needed so that
 			// if any components are deleted they do not affect the ordering of any of the other
 			// components in this pool (normally deletions are a swap-to-back operation)
 			// this lock releases on destructions so it's okay if Exceptions are raised when iterating
 			EntityCollection(EntityManager &em, const ComponentManager::ComponentMask &compMask,
-							 ComponentPoolEntityCollection compEntColl,
+							 ComponentPoolEntityCollection &&compEntColl,
 							 unique_ptr<BaseComponentPool::IterateLock> &&iLock);
 			Iterator begin();
 			Iterator end();
@@ -101,6 +104,15 @@ namespace ecs
 		Handle<CompType> Assign(Entity::Id e, T... args);
 
 		/**
+		 * Construct a new keyed component of type "KeyType" with the given arguments
+		 * and attach it to the entity.
+		 *
+		 * Returns a handle to the created component.
+		 */
+		template <typename KeyType, typename ...T>
+		Handle<KeyType> AssignKey(Entity::Id e, T... args);
+
+		/**
 		 * Remove the component of type "CompType" from this entity.
 		 * Throws an error if it doesn't have this component type.
 		 */
@@ -117,6 +129,12 @@ namespace ecs
 		 */
 		template <typename CompType>
 		bool Has(Entity::Id e) const;
+
+		/**
+		 * Check if an entity has a given type of component with a specific key value
+		 */
+		template <typename KeyType>
+		bool Has(Entity::Id e, const KeyType &key) const;
 
 		/**
 		 * Get a handle to an entity's component of type "CompType"
@@ -137,6 +155,15 @@ namespace ecs
 		 */
 		template<typename CompType>
 		void RegisterComponentType();
+
+		/**
+		 * Register the given type as a "Component type" that can be used a key to
+		 * lookup entities by component value.
+		 * 
+		 * A KeyType must be valid as the key to an unordered_map
+		 */
+		template<typename KeyType>
+		void RegisterKeyedComponentType();
 
 		/**
 		 * Create a component mask for the given types
@@ -174,10 +201,17 @@ namespace ecs
 
 		/**
 		 * Same as the template form of this function except that the components
-		 * are speicified with the given ComponentMask.  This is usually created with
+		 * are specified with the given ComponentMask.  This is usually created with
 		 * "CreateComponentMask" and possibly "SetComponentMask" methods
 		 */
 		EntityCollection EntitiesWith(ComponentManager::ComponentMask compMask);
+
+		/**
+		 * Used to iterate over all entities with a specific component value.
+		 * KeyType must be a valid key type for a map.
+		 */
+		template <typename KeyType, typename ...CompTypes>
+		EntityCollection EntitiesWith(const KeyType &key);
 
 		/**
 		 * Register @callback to be called whenever an event of type Event
@@ -239,6 +273,11 @@ namespace ecs
 		vector<bool> indexIsAlive;
 
 		ComponentManager compMgr;
+
+		/**
+		 * map the typeid(T) of a const component type, T, to the "index" of that key map.
+		 */
+		GLOMERATE_MAP_TYPE<std::type_index, uint32> compTypeToKeyIndex;
 
 		/**
 		 * eventSignals[i] is the signal containing all subscribers to

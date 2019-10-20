@@ -65,6 +65,16 @@ namespace test
 		}
 	};
 
+	TEST(EcsBasic, NullEntity)
+	{
+		ecs::EntityManager em;
+		ecs::Entity e1;
+		ecs::Entity e2(&em, ecs::Entity::Id());
+
+		EXPECT_FALSE(e1.Valid());
+		EXPECT_FALSE(e2.Valid());
+	}
+
 	TEST(EcsBasic, CreateDestroyEntity)
 	{
 		ecs::EntityManager em;

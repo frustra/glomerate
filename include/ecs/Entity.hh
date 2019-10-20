@@ -51,6 +51,8 @@ namespace ecs
 			bool operator==(const Id &other) const;
 			bool operator!=(const Id &other) const;
 			bool operator<(const Id &other) const;
+			bool operator!() const;
+			operator bool() const;
 
 			friend std::ostream &operator<<(std::ostream &os, const Id e);
 
@@ -116,6 +118,15 @@ namespace ecs
 		Handle<CompType> Assign(T... args);
 
 		/**
+		 * Construct a new keyed component of type "KeyType" with the given arguments
+		 * and attach it to the entity.
+		 *
+		 * Returns a handle to the created component.
+		 */
+		template <typename KeyType, typename ...T>
+		Handle<KeyType> AssignKey(T... args);
+
+		/**
 		 * Remove the given component type from this entity.
 		 * Throws an error if it doesn't have this component type.
 		 */
@@ -132,6 +143,12 @@ namespace ecs
 		 */
 		template <typename CompType>
 		bool Has() const;
+
+		/**
+		 * Return true if this Entity has the given component type with the given value.
+		 */
+		template <typename KeyType>
+		bool Has(const KeyType &key) const;
 
 		/**
 		 * Get a handle to an entity's component of type "CompType"

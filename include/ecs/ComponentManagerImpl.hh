@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/ComponentManager.hh"
+#include <type_traits>
 
 namespace ecs
 {
@@ -37,6 +38,34 @@ namespace ecs
 		return Handle<CompType>(e, componentPool);
 	}
 
+	template <typename KeyType, typename ...T>
+	Handle<KeyType> ComponentManager::AssignKey(Entity::Id e, T... args)
+	{
+		std::type_index compType = typeid(KeyType);
+
+		uint32 compIndex;
+
+		try
+		{
+			compIndex = compTypeToCompIndex.at(compType);
+		}
+		// component never seen before, add it to the collection
+		catch (const std::out_of_range &e)
+		{
+			RegisterKeyedComponentType<KeyType>();
+			compIndex = compTypeToCompIndex.at(compType);
+		}
+
+		Assert(entCompMasks.size() > e.Index(), "entity does not have a component mask");
+
+		auto &compMask = entCompMasks.at(e.Index());
+		compMask.set(compIndex);
+
+		auto componentPool = dynamic_cast<KeyedComponentPool<KeyType>*>(componentPools.at(compIndex));
+		componentPool->NewComponent(e, args...);
+		return Handle<KeyType>(e, componentPool);
+	}
+
 	template <typename CompType>
 	void ComponentManager::Remove(Entity::Id e)
 	{
@@ -55,7 +84,7 @@ namespace ecs
 				+ string(tIndex.name()));
 		}
 
-		static_cast<ComponentPool<CompType>*>(componentPools.at(compIndex))->Remove(e);
+		componentPools.at(compIndex)->Remove(e);
 		compMask.reset(compIndex);
 	}
 
@@ -70,6 +99,24 @@ namespace ecs
 
 		auto compIndex = compTypeToCompIndex.at(compType);
 		return entCompMasks.at(e.Index())[compIndex];
+	}
+
+	template <typename KeyType>
+	bool ComponentManager::Has(Entity::Id e, const KeyType &key) const
+	{
+		std::type_index compType = typeid(KeyType);
+		if (compTypeToCompIndex.count(compType) == 0)
+		{
+			throw UnrecognizedComponentType(compType);
+		}
+
+		auto compIndex = compTypeToCompIndex.at(compType);
+		if (entCompMasks.at(e.Index())[compIndex])
+		{
+			auto *compPool = dynamic_cast<KeyedComponentPool<KeyType>*>(componentPools.at(compIndex));
+			return key == *compPool->Get(e);
+		}
+		return false;
 	}
 
 	template <typename CompType>
@@ -101,6 +148,23 @@ namespace ecs
 		uint32 compIndex = componentPools.size();
 		compTypeToCompIndex[compType] = compIndex;
 		componentPools.push_back(new ComponentPool<CompType>());
+	}
+
+	template <typename KeyType>
+	void ComponentManager::RegisterKeyedComponentType()
+	{
+		std::type_index compType = typeid(KeyType);
+
+		if (compTypeToCompIndex.count(compType) != 0)
+		{
+			std::stringstream ss;
+			ss << "component type " << string(compType.name()) << " is already registered";
+			throw std::runtime_error(ss.str());
+		}
+
+		uint32 compIndex = componentPools.size();
+		compTypeToCompIndex[compType] = compIndex;
+		componentPools.push_back(new KeyedComponentPool<KeyType>());
 	}
 
 	template <typename ...CompTypes>

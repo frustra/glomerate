@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <queue>
+#include <unordered_set>
 #include <iterator>
 #include <stdexcept>
 #include "ecs/Common.hh"
@@ -22,21 +23,31 @@ namespace ecs
 		class Iterator : public std::iterator<std::input_iterator_tag, Entity::Id>
 		{
 		public:
-			Iterator(BaseComponentPool &pool, size_t compIndex);
+			Iterator(BaseComponentPool *pool, size_t compIndex);
+			Iterator(BaseComponentPool *pool, std::list<size_t> *indexes, std::list<size_t>::iterator iter);
 			Iterator &operator++();
 			bool operator==(const Iterator &other);
 			bool operator!=(const Iterator &other);
 			Entity::Id operator*();
 		private:
-			BaseComponentPool &pool;
+			BaseComponentPool *pool;
+			std::list<size_t> *indexes;
+			std::list<size_t>::iterator iter;
 			size_t compIndex;
 		};
 
+		ComponentPoolEntityCollection(); // Empty collection
 		ComponentPoolEntityCollection(BaseComponentPool &pool);
+		ComponentPoolEntityCollection(BaseComponentPool &pool, std::list<size_t> *indexes);
+		ComponentPoolEntityCollection(ComponentPoolEntityCollection &&other);
+		~ComponentPoolEntityCollection();
 		Iterator begin();
 		Iterator end();
 	private:
-		BaseComponentPool &pool;
+
+		BaseComponentPool *pool;
+		std::list<size_t> *indexes;
+		std::list<size_t>::iterator endIter;
 		size_t lastCompIndex;
 	};
 
@@ -71,7 +82,10 @@ namespace ecs
 		// over the components must stay the same.
 		virtual unique_ptr<IterateLock> CreateIterateLock() = 0;
 
+		static const size_t INVALID_COMP_INDEX = static_cast<size_t>(-1);
+		
 	private:
+
 		// when toggleSoftRemove(true) is called then any Remove(e) calls
 		// must guarentee to not alter the internal ordering of components.
 		// When toggleSoftRemove(false) is called later then removals are allowed to rearrange
@@ -82,6 +96,9 @@ namespace ecs
 		virtual Entity::Id entityAt(size_t compIndex) = 0;
 
 	};
+
+	template <typename CompType>
+	class KeyedComponentPool;
 
 	/**
 	 * ComponentPool is a storage container for Entity components.
@@ -114,9 +131,18 @@ namespace ecs
 		unique_ptr<BaseComponentPool::IterateLock> CreateIterateLock() override;
 
 	private:
-		static const size_t INVALID_COMP_INDEX = static_cast<size_t>(-1);
 
-		vector<std::pair<Entity::Id, CompType> > components;
+		struct Storage
+		{
+			Storage(Entity::Id eid, CompType value) : eid(eid), value(value) {}
+
+			Entity::Id eid;
+			CompType value;
+			std::list<size_t> *keyedList = nullptr;
+			std::list<size_t>::iterator keyedIterator;
+		};
+
+		vector<Storage> components;
 		size_t lastCompIndex;
 		GLOMERATE_MAP_TYPE<eid_t, size_t> entIndexToCompIndex;
 		bool softRemoveMode;
@@ -125,8 +151,31 @@ namespace ecs
 		void toggleSoftRemove(bool enabled) override;
 
 		void softRemove(size_t compIndex);
-		void remove(size_t compIndex);
+		virtual void remove(size_t compIndex);
 
 		Entity::Id entityAt(size_t compIndex) override;
+
+		friend KeyedComponentPool<CompType>;
+	};
+
+	/**
+	 * KeyedComponentPool is a version of ComponentPool that allows looking up entities
+	 * based on a component value. KeyType should always be a valid key for an unordered_map.
+	 */
+	template <typename KeyType>
+	class KeyedComponentPool : public ComponentPool<KeyType>
+	{
+	public:
+		KeyedComponentPool();
+
+		// DO NOT CACHE THIS POINTER, a component's pointer may change over time
+		template <typename ...T>
+		KeyType *NewComponent(Entity::Id e, T... args);
+		ComponentPoolEntityCollection KeyedEntities(const KeyType &key);
+
+	private:
+		void remove(size_t compIndex) override;
+
+		GLOMERATE_MAP_TYPE<KeyType, std::list<size_t>> compKeyToCompIndex;
 	};
 }

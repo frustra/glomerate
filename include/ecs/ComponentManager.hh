@@ -29,6 +29,9 @@ namespace ecs
 		template <typename CompType, typename ...T>
 		Handle<CompType> Assign(Entity::Id e, T... args);
 
+		template <typename KeyType, typename ...T>
+		Handle<KeyType> AssignKey(Entity::Id e, T... args);
+
 		template <typename CompType>
 		void Remove(Entity::Id e);
 
@@ -36,6 +39,9 @@ namespace ecs
 
 		template <typename CompType>
 		bool Has(Entity::Id e) const;
+
+		template <typename KeyType>
+		bool Has(Entity::Id e, const KeyType &key) const;
 
 		template <typename CompType>
 		Handle<CompType> Get(Entity::Id e);
@@ -62,6 +68,9 @@ namespace ecs
 		 */
 		template<typename CompType>
 		void RegisterComponentType();
+
+		template<typename KeyType>
+		void RegisterKeyedComponentType();
 
 	private:
 		template <typename TypeId>

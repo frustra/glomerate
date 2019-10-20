@@ -4,6 +4,7 @@
 #include "ecs/Entity.hh"
 #include "ecs/Handle.hh"
 #include "ecs/EntityDestruction.hh"
+#include <type_traits>
 
 // EntityManager
 namespace ecs
@@ -12,6 +13,12 @@ namespace ecs
 	Handle<CompType> EntityManager::Assign(Entity::Id e, T... args)
 	{
 		return compMgr.Assign<CompType>(e, args...);
+	}
+
+	template <typename KeyType, typename ...T>
+	Handle<KeyType> EntityManager::AssignKey(Entity::Id e, T... args)
+	{
+		return compMgr.AssignKey<KeyType>(e, args...);
 	}
 
 	template <typename CompType>
@@ -26,6 +33,12 @@ namespace ecs
 		return compMgr.Has<CompType>(e);
 	}
 
+	template <typename KeyType>
+	bool EntityManager::Has(Entity::Id e, const KeyType &key) const
+	{
+		return compMgr.Has<KeyType>(e, key);
+	}
+
 	template <typename CompType>
 	Handle<CompType> EntityManager::Get(Entity::Id e)
 	{
@@ -38,10 +51,43 @@ namespace ecs
 		return EntitiesWith(compMgr.CreateMask<CompTypes...>());
 	}
 
+	template <typename KeyType, typename ...CompTypes>
+	EntityManager::EntityCollection EntityManager::EntitiesWith(const KeyType &key)
+	{
+		std::type_index keyType = typeid(KeyType);
+		if (compMgr.compTypeToCompIndex.count(keyType) == 0)
+		{
+			throw UnrecognizedComponentType(keyType);
+		}
+
+		auto compIndex = compMgr.compTypeToCompIndex.at(keyType);
+		auto compPool = dynamic_cast<KeyedComponentPool<KeyType>*>(compMgr.componentPools.at(compIndex));
+		if (compPool)
+		{
+			return EntityManager::EntityCollection(
+				*this,
+				compMgr.CreateMask<KeyType, CompTypes...>(),
+				compPool->KeyedEntities(key),
+				compPool->CreateIterateLock()
+			);
+		}
+		else
+		{
+			// Return empty collection
+			return EntityManager::EntityCollection(*this);
+		}
+	}
+
 	template<typename CompType>
 	void EntityManager::RegisterComponentType()
 	{
 		compMgr.RegisterComponentType<CompType>();
+	}
+
+	template<typename KeyType>
+	void EntityManager::RegisterKeyedComponentType()
+	{
+		compMgr.RegisterKeyedComponentType<KeyType>();
 	}
 
 	template <typename ...CompTypes>
@@ -139,7 +185,7 @@ namespace ecs
 
 	inline bool EntityManager::Valid(Entity::Id e) const
 	{
-		return e.Generation() == entIndexToGen.at(e.Index());
+		return e && e.Generation() == entIndexToGen.at(e.Index());
 	}
 
 	inline void EntityManager::RemoveAllComponents(Entity::Id e)
@@ -342,11 +388,15 @@ namespace ecs
 // EntityManager::EntityCollection
 namespace ecs
 {
+	inline EntityManager::EntityCollection::EntityCollection(EntityManager &em)
+		: em(em), compEntColl()
+	{}
+
 	inline EntityManager::EntityCollection::EntityCollection(EntityManager &em,
 			const ComponentManager::ComponentMask &compMask,
-			ComponentPoolEntityCollection compEntColl,
+			ComponentPoolEntityCollection &&compEntColl,
 			unique_ptr<BaseComponentPool::IterateLock> &&iLock)
-		: em(em), compMask(compMask), compEntColl(compEntColl), iLock(std::move(iLock))
+		: em(em), compMask(compMask), compEntColl(std::move(compEntColl)), iLock(std::move(iLock))
 	{}
 
 	inline EntityManager::EntityCollection::Iterator EntityManager::EntityCollection::begin()
