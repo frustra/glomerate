@@ -428,4 +428,17 @@ namespace ecs
 			return ComponentPoolEntityCollection();
 		}
 	}
+
+	template <typename KeyType>
+	Entity::Id KeyedComponentPool<KeyType>::KeyedEntity(const KeyType &key)
+	{
+		if (compKeyToCompIndex.count(key) == 1)
+		{
+			return *(ComponentPoolEntityCollection(*this, &compKeyToCompIndex[key]).begin());
+		}
+		else
+		{
+			return Entity::Id();
+		}
+	}
 }

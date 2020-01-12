@@ -172,6 +172,7 @@ namespace ecs
 		template <typename ...T>
 		KeyType *NewComponent(Entity::Id e, T... args);
 		ComponentPoolEntityCollection KeyedEntities(const KeyType &key);
+		Entity::Id KeyedEntity(const KeyType &key);
 
 	private:
 		void remove(size_t compIndex) override;

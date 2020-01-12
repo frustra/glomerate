@@ -78,6 +78,28 @@ namespace ecs
 		}
 	}
 
+	template <typename KeyType>
+	Entity EntityManager::EntityWith(const KeyType &key)
+	{
+		std::type_index keyType = typeid(KeyType);
+		if (compMgr.compTypeToCompIndex.count(keyType) == 0)
+		{
+			throw UnrecognizedComponentType(keyType);
+		}
+
+		auto compIndex = compMgr.compTypeToCompIndex.at(keyType);
+		auto compPool = dynamic_cast<KeyedComponentPool<KeyType>*>(compMgr.componentPools.at(compIndex));
+		if (compPool)
+		{
+			return Entity(this, compPool->KeyedEntity(key));
+		}
+		else
+		{
+			// Return invalid entity
+			return Entity();
+		}
+	}
+
 	template<typename CompType>
 	void EntityManager::RegisterComponentType()
 	{

@@ -71,6 +71,8 @@ namespace ecs
 		bool operator==(const Entity &other) const;
 		bool operator!=(const Entity &other) const;
 		bool operator<(const Entity &other) const;
+		bool operator!() const;
+		operator bool() const;
 
 		friend std::ostream &operator<<(std::ostream &os, const Entity e);
 

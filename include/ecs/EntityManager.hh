@@ -209,9 +209,22 @@ namespace ecs
 		/**
 		 * Used to iterate over all entities with a specific component value.
 		 * KeyType must be a valid key type for a map.
+		 * 
+		 * This function will only find components added with the AssignKey() function.
 		 */
 		template <typename KeyType, typename ...CompTypes>
 		EntityCollection EntitiesWith(const KeyType &key);
+
+		/**
+		 * Used to find a single entity with a specific component value.
+		 * KeyType must be a valid key type for a map.
+		 * 
+		 * This function will only find components added with the AssignKey() function.
+		 * 
+		 * If there is not exactly 1 entity matching the filter, an invalid entity will be returned.
+		 */
+		template <typename KeyType>
+		Entity EntityWith(const KeyType &key);
 
 		/**
 		 * Register @callback to be called whenever an event of type Event

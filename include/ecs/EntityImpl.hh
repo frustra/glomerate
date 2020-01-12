@@ -91,6 +91,16 @@ namespace ecs
 		return this->eid < other.eid;
 	}
 
+	inline bool Entity::operator!() const
+	{
+		return !this->Valid();
+	}
+
+	inline Entity::operator bool() const
+	{
+		return this->Valid();
+	}
+
 	inline std::ostream &operator<<(std::ostream &os, const Entity e)
 	{
 		os << e.eid;
