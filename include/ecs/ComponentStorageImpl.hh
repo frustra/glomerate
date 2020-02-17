@@ -362,14 +362,14 @@ namespace ecs
 		auto &component = ComponentPool<KeyType>::components.at(newCompIndex);
 		if (compKeyToCompIndex.count(component.value) > 0)
 		{
-			component.keyedList = &compKeyToCompIndex[component.value];
+			component.keyedList = compKeyToCompIndex[component.value];
 			component.keyedIterator = component.keyedList->emplace(component.keyedList->end(), newCompIndex);
 		}
 		else
 		{
-			auto result = compKeyToCompIndex.emplace(component.value, std::initializer_list<size_t>({ newCompIndex }));
-			component.keyedList = &(result.first->second);
+			component.keyedList = std::make_shared<std::list<size_t>>(std::initializer_list<size_t>({ newCompIndex }));
 			component.keyedIterator = component.keyedList->begin();
+			compKeyToCompIndex.emplace(component.value, component.keyedList);
 		}
 
 		return &component.value;
@@ -378,7 +378,7 @@ namespace ecs
 	template <typename KeyType>
 	void KeyedComponentPool<KeyType>::remove(size_t compIndex)
 	{
-		auto componentToRemove = ComponentPool<KeyType>::components.at(compIndex);
+		auto &componentToRemove = ComponentPool<KeyType>::components.at(compIndex);
 		if (componentToRemove.keyedList != nullptr)
 		{
 			componentToRemove.keyedList->erase(componentToRemove.keyedIterator);
@@ -421,7 +421,7 @@ namespace ecs
 	{
 		if (compKeyToCompIndex.count(key) > 0)
 		{
-			return ComponentPoolEntityCollection(*this, &compKeyToCompIndex[key]);
+			return ComponentPoolEntityCollection(*this, compKeyToCompIndex[key].get());
 		}
 		else
 		{
@@ -434,7 +434,7 @@ namespace ecs
 	{
 		if (compKeyToCompIndex.count(key) == 1)
 		{
-			return *(ComponentPoolEntityCollection(*this, &compKeyToCompIndex[key]).begin());
+			return *(ComponentPoolEntityCollection(*this, compKeyToCompIndex[key].get()).begin());
 		}
 		else
 		{

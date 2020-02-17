@@ -138,7 +138,7 @@ namespace ecs
 
 			Entity::Id eid;
 			CompType value;
-			std::list<size_t> *keyedList = nullptr;
+			std::shared_ptr<std::list<size_t>> keyedList = nullptr;
 			std::list<size_t>::iterator keyedIterator;
 		};
 
@@ -177,6 +177,7 @@ namespace ecs
 	private:
 		void remove(size_t compIndex) override;
 
-		GLOMERATE_MAP_TYPE<KeyType, std::list<size_t>> compKeyToCompIndex;
+		// Store a pointer to a list so that GLOMERATE_MAP_TYPE can be a flat-map.
+		GLOMERATE_MAP_TYPE<KeyType, std::shared_ptr<std::list<size_t>>> compKeyToCompIndex;
 	};
 }
