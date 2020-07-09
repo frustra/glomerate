@@ -70,7 +70,7 @@ namespace ecs
 		 *
 		 * It is good practice to do this with all intended component types during
 		 * program initialization to prevent errors when checking for component types
-		 * that have yet to be assigned to an entity.
+		 * that have yet to be set on an entity.
 		 *
 		 * This will throw an std::runtime_error if any of the types are already registered.
 		 */

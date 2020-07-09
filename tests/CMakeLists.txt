@@ -48,4 +48,33 @@ foreach(entity_bits 64 32)
 		COMMENT "Run ${test_type} tests for ${entity_bits} bit entities built for ${GLOMERATE_TEST_ARCH} CPU ARCH")
 
 	endforeach(test_type)
+
+	# Examples
+	set(test_target	examples_${entity_bits}bit-ents)
+	set(test_exe ecs_${test_target})
+
+	file(GLOB_RECURSE test_sources ${CMAKE_CURRENT_SOURCE_DIR}/examples/*.cc)
+	list(REMOVE_DUPLICATES test_sources)
+
+	file(GLOB_RECURSE test_headers ${CMAKE_CURRENT_SOURCE_DIR}/examples/*.hh)
+	list(REMOVE_DUPLICATES test_headers)
+
+	add_executable(${test_exe} ${test_sources} ${test_headers})
+
+	if (${GLOMERATE_TEST_ARCH} MATCHES "x86")
+		set_target_properties(${test_exe}
+			PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+	endif()
+
+	if (${entity_bits} EQUAL 32)
+		target_compile_definitions(${test_exe}
+			PRIVATE "-DGLOMERATE_32BIT_ENTITIES")
+	endif()
+
+	# target to run the examples
+	add_custom_target(
+		${test_target}
+		COMMAND ${test_exe}
+		DEPENDS ${test_exe}
+	COMMENT "Run examples for ${entity_bits} bit entities built for ${GLOMERATE_TEST_ARCH} CPU ARCH")
 endforeach(entity_bits)

@@ -125,7 +125,7 @@ namespace ecs
 	CompType Entity::Set(T&&... args)
 	{
 		if (em == nullptr) {
-			throw runtime_error("Cannot assign component to NULL Entity");
+			throw runtime_error("Cannot set component on NULL Entity");
 		}
 		return em->compMgr.Set<CompType>(this->eid, args...);
 	}
@@ -134,7 +134,7 @@ namespace ecs
 	KeyType Entity::SetKey(T&&... args)
 	{
 		if (em == nullptr) {
-			throw runtime_error("Cannot assign component to NULL Entity");
+			throw runtime_error("Cannot set component on NULL Entity");
 		}
 		return em->compMgr.SetKey<KeyType>(this->eid, args...);
 	}
@@ -143,7 +143,7 @@ namespace ecs
 	void Entity::Set(const CompType &&value)
 	{
 		if (em == nullptr) {
-			throw runtime_error("Cannot assign component to NULL Entity");
+			throw runtime_error("Cannot set component on NULL Entity");
 		}
 		em->compMgr.Set<CompType>(this->eid, std::move(value));
 	}
@@ -152,7 +152,7 @@ namespace ecs
 	void Entity::SetKey(const KeyType &&key)
 	{
 		if (em == nullptr) {
-			throw runtime_error("Cannot assign component to NULL Entity");
+			throw runtime_error("Cannot set component on NULL Entity");
 		}
 		em->compMgr.SetKey<KeyType>(this->eid, std::move(key));
 	}

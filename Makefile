@@ -5,6 +5,13 @@
 	tests-all-arches \
 	tests \
 	tests-x86 \
+	examples-tests-all-arches \
+	examples-tests \
+	examples-tests-32bit \
+	examples-tests-64bit \
+	examples-tests-x86 \
+	examples-tests-x86-32bit \
+	examples-tests-x86-64bit \
 	unit-tests-all-arches \
 	unit-tests \
 	unit-tests-32bit \
@@ -30,6 +37,24 @@ clean:
 
 build:
 	mkdir -p build
+
+examples-all-arches: examples examples-x86
+
+examples: examples-32bit examples-64bit
+
+examples-32bit: build test-cmake
+	cd build; make examples_32bit-ents
+
+examples-64bit: build test-cmake
+	cd build; make examples_64bit-ents
+
+examples-x86: examples-x86-32bit examples-x86-64bit
+
+examples-x86-32bit: build test-cmake-x86
+	cd build; make examples_32bit-ents
+
+examples-x86-64bit: build test-cmake-x86
+	cd build; make examples_64bit-ents
 
 unit-tests-all-arches: unit-tests unit-tests-x86
 
@@ -87,9 +112,9 @@ test-cmake-x86: build dependencies
 
 tests-all-arches: tests tests-x86
 
-tests: unit-tests integration-tests
+tests: examples unit-tests integration-tests
 
-tests-x86: unit-tests-x86 integration-tests-x86
+tests-x86: examples-x86 unit-tests-x86 integration-tests-x86
 
 astyle:
 	astyle --options="extra/astyle.config" "src/*.hh" "src/*.cc"

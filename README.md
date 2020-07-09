@@ -43,11 +43,11 @@ int main(int argc, char **argv)
 	entityManager.RegisterComponentType<Position>();
 
 	ecs::Entity entity = entityManager.NewEntity();
-	entity.Assign<Position>(1, 2, 3);
+	entity.Set<Position>(1, 2, 3);
 
 	for (ecs::Entity e : entityManager.EntitiesWith<Position>())
 	{
-		auto position = e.Get<Position>(); // returns an ecs::Handle<Position>
+		Position position = e.Get<Position>();
 		std::cout << e
 		          << " has x: " << position->x
 		          << ", y: " << position->y
@@ -132,9 +132,9 @@ public:
         explosionsSeen += 1;
 
         if (entity.Has<Character>()) {
-            ecs::Handle<Character> character = entity.Get<Character>();
+            Character character = entity.Get<Character>();
 
-            if (character->x == explosion.x && character->y == explosion.y) {
+            if (character.x == explosion.x && character.y == explosion.y) {
                 entity.Destroy();
             }
         }
@@ -150,20 +150,21 @@ int main(int argc, char **argv)
     typedef ecs::EntityDestruction Destruction;
     em.Subscribe<Destruction>([](ecs::Entity e, const Destruction &d) {
         if (e.Has<Character>()) {
-            cout << e.Get<Character>()->name << " has died" << endl;
+            cout << e.Get<Character>().name << " has died" << endl;
         }
     });
 
     ecs::Entity player = em.NewEntity();
-    auto playerChar = player.Assign<Character>(1, 1, "John Cena");
+    player.Set<Character>(1, 1, "John Cena");
 
     // player will be smart and moves out of the way of missiles
     auto intelligence = [](ecs::Entity e, const IncomingMissile &missile) {
-        ecs::Handle<Character> character = e.Get<Character>();
-        if (character->x == missile.x && character->y == missile.y) {
+        Character character = e.Get<Character>();
+        if (character.x == missile.x && character.y == missile.y) {
             // we better move...
-            cout << character->name << " has moved out of the way!" << endl;
-            character->x += 10;
+            cout << character.name << " has moved out of the way!" << endl;
+            character.x += 10;
+            e.Set<Character>(character);
         }
     };
 
@@ -173,18 +174,20 @@ int main(int argc, char **argv)
     ExplosionHandler explosionHandler;
     em.Subscribe<Explosion>(std::ref(explosionHandler));
 
-    cout << "Firing a missile at " << playerChar->name << endl;
-    int missileX = playerChar->x;
-    int missileY = playerChar->y;
+    Character playerChar = player.Get<Character>();
+    cout << "Firing a missile at " << playerChar.name << endl;
+    int missileX = playerChar.x;
+    int missileY = playerChar.y;
     player.Emit(IncomingMissile(missileX, missileY));
     player.Emit(Explosion(missileX, missileY));
 
-    cout << playerChar->name << " stops paying attention (Uh oh)" << endl;
+    cout << playerChar.name << " stops paying attention (Uh oh)" << endl;
     sub.Unsubscribe();
 
-    cout << "Firing a missile at " << playerChar->name << endl;
-    missileX = playerChar->x;
-    missileY = playerChar->y;
+    playerChar = player.Get<Character>();
+    cout << "Firing a missile at " << playerChar.name << endl;
+    missileX = playerChar.x;
+    missileY = playerChar.y;
     player.Emit(IncomingMissile(missileX, missileY));
     player.Emit(Explosion(missileX, missileY));
 

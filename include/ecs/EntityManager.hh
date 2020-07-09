@@ -154,7 +154,7 @@ namespace ecs
 		 *
 		 * It is good practice to do this with all intended component types during
 		 * program initialization to prevent errors when checking for component types
-		 * that have yet to be assigned to an entity.
+		 * that have yet to be set on an entity.
 		 */
 		template<typename CompType>
 		void RegisterComponentType();
@@ -213,7 +213,7 @@ namespace ecs
 		 * Used to iterate over all entities with a specific component value.
 		 * KeyType must be a valid key type for a map.
 		 * 
-		 * This function will only find components added with the AssignKey() function.
+		 * This function will only find components added with the SetKey() function.
 		 */
 		template <typename KeyType, typename ...CompTypes>
 		EntityCollection EntitiesWith(const KeyType &key);
@@ -222,7 +222,7 @@ namespace ecs
 		 * Used to find a single entity with a specific component value.
 		 * KeyType must be a valid key type for a map.
 		 * 
-		 * This function will only find components added with the AssignKey() function.
+		 * This function will only find components added with the SetKey() function.
 		 * 
 		 * If there is not exactly 1 entity matching the filter, an invalid entity will be returned.
 		 */
