@@ -2,7 +2,6 @@
 
 #include "ecs/Entity.hh"
 #include "ecs/EntityManager.hh"
-#include "ecs/Handle.hh"
 
 // Entity::Id
 namespace ecs
@@ -123,21 +122,39 @@ namespace ecs
 	}
 
 	template <typename CompType, typename ...T>
-	Handle<CompType> Entity::Assign(T... args)
+	CompType Entity::Set(T&&... args)
 	{
 		if (em == nullptr) {
 			throw runtime_error("Cannot assign component to NULL Entity");
 		}
-		return em->Assign<CompType>(this->eid, args...);
+		return em->compMgr.Set<CompType>(this->eid, args...);
 	}
 
 	template <typename KeyType, typename ...T>
-	Handle<KeyType> Entity::AssignKey(T... args)
+	KeyType Entity::SetKey(T&&... args)
 	{
 		if (em == nullptr) {
 			throw runtime_error("Cannot assign component to NULL Entity");
 		}
-		return em->AssignKey<KeyType>(this->eid, args...);
+		return em->compMgr.SetKey<KeyType>(this->eid, args...);
+	}
+
+	template <typename CompType>
+	void Entity::Set(const CompType &&value)
+	{
+		if (em == nullptr) {
+			throw runtime_error("Cannot assign component to NULL Entity");
+		}
+		em->compMgr.Set<CompType>(this->eid, std::move(value));
+	}
+
+	template <typename KeyType>
+	void Entity::SetKey(const KeyType &&key)
+	{
+		if (em == nullptr) {
+			throw runtime_error("Cannot assign component to NULL Entity");
+		}
+		em->compMgr.SetKey<KeyType>(this->eid, std::move(key));
 	}
 
 	template <typename CompType>
@@ -146,28 +163,28 @@ namespace ecs
 		if (em == nullptr) {
 			throw runtime_error("Cannot remove component from NULL Entity");
 		}
-		em->Remove<CompType>(this->eid);
+		em->compMgr.Remove<CompType>(this->eid);
 	}
 
 	template <typename CompType>
 	bool Entity::Has() const
 	{
-		return (em != nullptr) && em->Has<CompType>(this->eid);
+		return (em != nullptr) && em->compMgr.Has<CompType>(this->eid);
 	}
 
 	template <typename KeyType>
 	bool Entity::Has(const KeyType &key) const
 	{
-		return (em != nullptr) && em->Has<KeyType>(this->eid, key);
+		return (em != nullptr) && em->compMgr.Has<KeyType>(this->eid, key);
 	}
 
 	template <typename CompType>
-	Handle<CompType> Entity::Get()
+	CompType Entity::Get() const
 	{
 		if (em == nullptr) {
 			throw runtime_error("NULL entity has no components");
 		}
-		return em->Get<CompType>(this->eid);
+		return em->compMgr.Get<CompType>(this->eid);
 	}
 
 	inline void Entity::Destroy()
@@ -188,7 +205,7 @@ namespace ecs
 		if (em == nullptr) {
 			return;
 		}
-		em->RemoveAllComponents(this->eid);
+		em->compMgr.RemoveAll(this->eid);
 	}
 
 	inline EntityManager *Entity::GetManager()

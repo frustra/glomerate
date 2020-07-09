@@ -35,8 +35,8 @@ namespace test
 	// An event
 	struct Hit
 	{
-		Hit(ecs::Handle<Weapon> wep) : weapon(wep) {}
-		ecs::Handle<Weapon> weapon;
+		Hit(const Weapon &wep) : weapon(wep) {}
+		const Weapon weapon;
 	};
 
 	class Gravedigger
@@ -55,8 +55,10 @@ namespace test
 	public:
 		void operator()(ecs::Entity e, const Hit &hit)
 		{
-			e.Get<Character>()->health -= hit.weapon->damage;
-			totalDamage += hit.weapon->damage;
+			Character c = e.Get<Character>();
+			c.health -= hit.weapon.damage;
+			e.Set<Character>(c);
+			totalDamage += hit.weapon.damage;
 			totalDamageSq = totalDamage * totalDamage;
 		}
 
@@ -79,12 +81,12 @@ namespace test
 		virtual void SetUp()
 		{
 			player1 = em.NewEntity();
-			player1.Assign<Character>(10);
-			player1.Assign<Weapon>(1);
+			player1.Set<Character>(10);
+			player1.Set<Weapon>(1);
 
 			player2 = em.NewEntity();
-			player2.Assign<Character>(10);
-			player2.Assign<Weapon>(2);
+			player2.Set<Character>(10);
+			player2.Set<Weapon>(2);
 		}
 	};
 
@@ -102,7 +104,7 @@ namespace test
 		player1.Subscribe<Hit>(hitReceiver);
 		player1.Emit(Hit(player2.Get<Weapon>()));
 
-		ASSERT_EQ(8, player1.Get<Character>()->health)
+		ASSERT_EQ(8, player1.Get<Character>().health)
 			<< "subscriber was never triggered";
 	}
 
@@ -134,10 +136,10 @@ namespace test
 		player1.Emit(Hit(player2.Get<Weapon>()));
 		player2.Emit(Hit(player1.Get<Weapon>()));
 
-		ASSERT_EQ(8, player1.Get<Character>()->health)
+		ASSERT_EQ(8, player1.Get<Character>().health)
 			<< "subscriber was never triggered";
 
-		ASSERT_EQ(9, player2.Get<Character>()->health)
+		ASSERT_EQ(9, player2.Get<Character>().health)
 			<< "subscriber was not triggered for all entities";
 	}
 
@@ -153,7 +155,7 @@ namespace test
 
 		player1.Emit(Hit(player2.Get<Weapon>()));
 
-		EXPECT_EQ(8, player1.Get<Character>()->health)
+		EXPECT_EQ(8, player1.Get<Character>().health)
 			<< "functor was not triggered";
 
 		EXPECT_TRUE(rekt) << "lambda was not triggered";
@@ -218,7 +220,7 @@ namespace test
 
 		player1.Emit(Hit(player2.Get<Weapon>()));
 
-		ASSERT_EQ(6, player1.Get<Character>()->health)
+		ASSERT_EQ(6, player1.Get<Character>().health)
 			<< "not all subscribers were triggered";
 	}
 
@@ -233,10 +235,10 @@ namespace test
 		player1.Emit(Hit(player2.Get<Weapon>()));
 		player2.Emit(Hit(player1.Get<Weapon>()));
 
-		ASSERT_EQ(6, player1.Get<Character>()->health)
+		ASSERT_EQ(6, player1.Get<Character>().health)
 			<< "not all subscribers were triggered";
 
-		ASSERT_EQ(8, player2.Get<Character>()->health)
+		ASSERT_EQ(8, player2.Get<Character>().health)
 			<< "not all subscribers were triggered";
 	}
 
@@ -256,10 +258,10 @@ namespace test
 		player1.Emit(Hit(player2.Get<Weapon>()));
 		player2.Emit(Hit(player1.Get<Weapon>()));
 
-		ASSERT_EQ(2, player1.Get<Character>()->health)
+		ASSERT_EQ(2, player1.Get<Character>().health)
 			<< "not all subscribers were triggered";
 
-		ASSERT_EQ(6, player2.Get<Character>()->health)
+		ASSERT_EQ(6, player2.Get<Character>().health)
 			<< "not all subscribers were triggered";
 	}
 
@@ -272,7 +274,7 @@ namespace test
 
 		player1.Emit(Hit(player2.Get<Weapon>()));
 
-		ASSERT_EQ(6, player1.Get<Character>()->health)
+		ASSERT_EQ(6, player1.Get<Character>().health)
 			<< "not all subscribers were triggered";
 	}
 
@@ -313,7 +315,7 @@ namespace test
 
 		player1.Emit(Hit(player2.Get<Weapon>()));
 
-		ASSERT_EQ(10, player1.Get<Character>()->health)
+		ASSERT_EQ(10, player1.Get<Character>().health)
 			<< "subscriber was triggered after it unsubscribed";
 	}
 
@@ -326,7 +328,7 @@ namespace test
 
 		player1.Emit(Hit(player2.Get<Weapon>()));
 
-		ASSERT_EQ(10, player1.Get<Character>()->health)
+		ASSERT_EQ(10, player1.Get<Character>().health)
 			<< "subscriber was triggered after it unsubscribed";
 	}
 

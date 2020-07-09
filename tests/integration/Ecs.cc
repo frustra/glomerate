@@ -5,18 +5,11 @@
 #include <gtest/gtest.h>
 
 #include "Ecs.hh"
+#include "Test.hh"
 
 namespace test
 {
-
-	typedef struct Position
-	{
-		Position() {}
-		Position(int x, int y) : x(x), y(y) {}
-		bool operator==(const Position & other) const { return x == other.x && y == other.y; }
-		int x;
-		int y;
-	} Position;
+	int positionsDestroyed = 0;
 
 	typedef struct Eater
 	{
@@ -44,12 +37,12 @@ namespace test
 			eEat = em.NewEntity();
 			eNoComps = em.NewEntity();
 
-			ePos1.Assign<Position>();
-			ePos2.Assign<Position>();
-			ePosEat.Assign<Position>();
+			ePos1.Set<Position>();
+			ePos2.Set<Position>();
+			ePosEat.Set<Position>();
 
-			ePosEat.Assign<Eater>();
-			eEat.Assign<Eater>();
+			ePosEat.Set<Eater>();
+			eEat.Set<Eater>();
 		}
 
 		void ExpectPositionEntitiesFound()
@@ -91,14 +84,16 @@ namespace test
 		ecs::EntityManager em;
 		ecs::Entity e = em.NewEntity();
 
-		e.Assign<Position>();
+		e.Set<Position>();
 
 		ASSERT_TRUE(e.Has<Position>());
 
+		positionsDestroyed = 0;
 		e.Remove<Position>();
 
 		ASSERT_FALSE(e.Has<Position>());
 		ASSERT_ANY_THROW(e.Get<Position>());
+		ASSERT_EQ(positionsDestroyed, 1);
 	}
 
 	TEST(EcsBasic, ConstructComponent)
@@ -106,11 +101,11 @@ namespace test
 		ecs::EntityManager em;
 		ecs::Entity e = em.NewEntity();
 
-		e.Assign<Position>(1, 2);
-		ecs::Handle<Position> pos = e.Get<Position>();
+		e.Set<Position>(1, 2);
+		const Position &pos = e.Get<Position>();
 
-		ASSERT_EQ(pos->x, 1);
-		ASSERT_EQ(pos->y, 2);
+		ASSERT_EQ(pos.x, 1);
+		ASSERT_EQ(pos.y, 2);
 	}
 
 	TEST(EcsBasic, RemoveAllComponents)
@@ -118,16 +113,18 @@ namespace test
 		ecs::EntityManager em;
 		ecs::Entity e = em.NewEntity();
 
-		e.Assign<Position>();
-		e.Assign<Eater>();
+		e.Set<Position>();
+		e.Set<Eater>();
 
 		ASSERT_TRUE(e.Has<Position>());
 		ASSERT_TRUE(e.Has<Eater>());
 
+		positionsDestroyed = 0;
 		e.RemoveAllComponents();
 
 		ASSERT_FALSE(e.Has<Position>());
 		ASSERT_FALSE(e.Has<Eater>());
+		ASSERT_EQ(positionsDestroyed, 1);
 	}
 
 	TEST_F(EcsBasicIterateWithComponents, MultiComponentTemplateIteration)
@@ -135,8 +132,8 @@ namespace test
 		for (ecs::Entity ent : em.EntitiesWith<Eater, Position>())
 		{
 			// ensure we can retrieve these components
-			auto eater = ent.Get<Eater>();
-			auto position = ent.Get<Position>();
+			ent.Get<Eater>();
+			ent.Get<Position>();
 
 			entsFound[ent] = true;
 		}
@@ -184,19 +181,19 @@ namespace test
 		ecs::Entity eEater3 = em.NewEntity();
 
 		// ensure that first 2 components in the Position pool don't have Eater components
-		ePos1.Assign<Position>();
-		ePos2.Assign<Position>();
+		ePos1.Set<Position>();
+		ePos2.Set<Position>();
 
 		// create the combination entity we will query for
-		ePosEater.Assign<Position>();
-		ePosEater.Assign<Eater>();
+		ePosEater.Set<Position>();
+		ePosEater.Set<Eater>();
 
 		// create more Eater components than Position components so that
 		// when we iterate over Position, Eater, we will iterate through
 		// the Position pool instead of the Eater pool
-		eEater1.Assign<Eater>();
-		eEater2.Assign<Eater>();
-		eEater3.Assign<Eater>();
+		eEater1.Set<Eater>();
+		eEater2.Set<Eater>();
+		eEater3.Set<Eater>();
 
 		for (auto e : em.EntitiesWith<Position, Eater>())
 		{
@@ -216,17 +213,19 @@ namespace test
 		ecs::Entity ePos1 = em.NewEntity();
 		ecs::Entity ePos2 = em.NewEntity();
 
-		ePos1.Assign<Position>();
-		ePos2.Assign<Position>();
+		ePos1.Set<Position>();
+		ePos2.Set<Position>();
 
 		// exception is normally raised after exiting the loop
 		// (EntityCollection / iterate lock is destroyed which triggers a list of "soft deleted"
 		// components to be deleted for real)
 		try {
+			positionsDestroyed = 0;
 			for (auto e : em.EntitiesWith<Position>())
 			{
 				e.Destroy();
 			}
+			ASSERT_EQ(positionsDestroyed, 2);
 		}
 		catch (const std::out_of_range & ex)
 		{
@@ -247,21 +246,23 @@ namespace test
 		ecs::EntityManager em;
 
 		ecs::Entity ent = em.NewEntity();
-		ecs::Handle<Position> positionComp;
 
-		positionComp = ent.Assign<Position>(1, 2);
-		ASSERT_EQ(Position(1, 2), *positionComp) << "sanity check failed";
+		Position positionComp = ent.Set<Position>(1, 2);
+		ASSERT_EQ(Position(1, 2), positionComp) << "sanity check failed";
 
+		positionsDestroyed = 0;
 		ent.Remove<Position>();
-		positionComp = ent.Assign<Position>(3, 4);
-		ASSERT_EQ(Position(3, 4), *positionComp) << "component values not properly set on creation";
+		ASSERT_EQ(positionsDestroyed, 1);
+
+		Position positionComp2 = ent.Set<Position>(3, 4);
+		ASSERT_EQ(Position(3, 4), positionComp2) << "component values not properly set on creation";
 	}
 
 	TEST(EcsBasic, AddEntitiesWhileIterating)
 	{
 		ecs::EntityManager em;
 		ecs::Entity e1 = em.NewEntity();
-		e1.Assign<Position>();
+		e1.Set<Position>();
 
 		int entitiesFound = 0;
 		for (ecs::Entity ent : em.EntitiesWith<Position>())
@@ -271,7 +272,7 @@ namespace test
 			if (entitiesFound == 1)
 			{
 				ecs::Entity e2 = em.NewEntity();
-				e2.Assign<Position>();
+				e2.Set<Position>();
 			}
 		}
 
@@ -285,12 +286,13 @@ namespace test
 		ecs::EntityManager em;
 
 		ecs::Entity e1 = em.NewEntity();
-		e1.Assign<Position>();
+		e1.Set<Position>();
 
 		ecs::Entity e2 = em.NewEntity();
-		e2.Assign<Position>();
+		e2.Set<Position>();
 
 		int entitiesFound = 0;
+		positionsDestroyed = 0;
 		for (ecs::Entity ent : em.EntitiesWith<Position>())
 		{
 			entitiesFound++;
@@ -303,9 +305,9 @@ namespace test
 				e1.Destroy();
 			}
 		}
-
 		ASSERT_EQ(1, entitiesFound) <<
 			"Should have only found one entity because the other was destroyed";
+		ASSERT_EQ(positionsDestroyed, 1);
 	}
 
 	// test to verify that an entity is not iterated over if it's component we are interested in
@@ -315,12 +317,13 @@ namespace test
 		ecs::EntityManager em;
 
 		ecs::Entity e1 = em.NewEntity();
-		e1.Assign<Position>();
+		e1.Set<Position>();
 
 		ecs::Entity e2 = em.NewEntity();
-		e2.Assign<Position>();
+		e2.Set<Position>();
 
 		int entitiesFound = 0;
+		positionsDestroyed = 0;
 		for (ecs::Entity ent : em.EntitiesWith<Position>())
 		{
 			entitiesFound++;
@@ -337,6 +340,7 @@ namespace test
 		ASSERT_EQ(1, entitiesFound) <<
 			"Should have only found one entity because the other's component was removed before"
 			" we got to it during iteration";
+		ASSERT_EQ(positionsDestroyed, 1);
 	}
 
 	TEST(EcsBasic, RegisterComponentPreventsExceptions)
@@ -372,14 +376,14 @@ namespace test
 		auto e1 = em.NewEntity();
 		auto e2 = em.NewEntity();
 
-		e1.Assign<Position>(1, 1);
-		e2.Assign<Position>(2, 2);
+		e1.Set<Position>(1, 1);
+		e2.Set<Position>(2, 2);
 
-		ecs::Handle<Position> p2Handle = e2.Get<Position>();
+		const Position &p2Handle = e2.Get<Position>();
 
-		Position p2before = *p2Handle;
+		Position p2before = p2Handle;
 		e1.Remove<Position>();
-		Position p2now = *p2Handle;
+		Position p2now = p2Handle;
 
 		ASSERT_EQ(p2before, p2now);
 	}
@@ -388,18 +392,18 @@ namespace test
 	{
 		ecs::EntityManager em;
 		auto e1 = em.NewEntity();
-		e1.Assign<Position>(1, 1);
+		e1.Set<Position>(1, 1);
 
-		ecs::Handle<Position> p2Handle = e1.Get<Position>();
-		Position positionBefore = *p2Handle;
+		const Position &p2Handle = e1.Get<Position>();
+		Position positionBefore = p2Handle;
 
 		for (int i = 0; i < 1000; ++i)
 		{
 			auto e = em.NewEntity();
-			e.Assign<Position>(2, 2);
+			e.Set<Position>(2, 2);
 		}
 
-		Position positionAfter = *p2Handle;
+		Position positionAfter = p2Handle;
 
 		ASSERT_EQ(positionBefore, positionAfter);
 	}
@@ -488,15 +492,18 @@ namespace test
 	{
 		ecs::EntityManager em;
 		ecs::Entity e = em.NewEntity();
-		e.Assign<Position>(1, 1);
+		e.Set<Position>(1, 1);
 
 		uint64 entitiesMade = 1;
 		const uint64 tooMany = 1000000;
 
 		while (e.Generation() <= 0 && entitiesMade < tooMany) {
+			positionsDestroyed = 0;
 			e.Destroy();
+			ASSERT_EQ(positionsDestroyed, 1);
+
 			e = em.NewEntity();
-			e.Assign<Position>(1, 1);
+			e.Set<Position>(1, 1);
 			entitiesMade += 1;
 		}
 
@@ -504,7 +511,9 @@ namespace test
 			<< "failed to trigger recycling of entities after "
 			<< entitiesMade << " were created and destroyed";
 
+		positionsDestroyed = 0;
 		e.Destroy();
+		ASSERT_EQ(positionsDestroyed, 1);
 		e = em.NewEntity();
 		entitiesMade += 1;
 

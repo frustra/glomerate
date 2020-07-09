@@ -3,35 +3,10 @@
 #include <functional>
 
 #include "Ecs.hh"
+#include "Test.hh"
 
 namespace test
 {
-
-	typedef struct Position
-	{
-		Position() {}
-		Position(int x, int y) : x(x), y(y) {}
-		bool operator==(const Position & other) const { return x == other.x && y == other.y; }
-		int x;
-		int y;
-	} Position;
-}
-
-namespace std
-{
-    template<>
-    struct hash<test::Position>
-    {
-        size_t operator()(const test::Position & p) const
-        {
-            return std::hash<int>{}(p.x) ^ (std::hash<int>{}(p.y) << 1);
-        }
-    };
-}
-
-namespace test
-{
-
 	class EcsKeyedIterateWithComponents : public ::testing::Test
 	{
 	protected:
@@ -52,12 +27,12 @@ namespace test
 			ePos3 = em.NewEntity();
 			ePosNoKey = em.NewEntity();
 
-			ePos1.AssignKey<Position>(1, 2);
-			ePos2.AssignKey<Position>(2, 2);
-			ePos2Dup.AssignKey<Position>(2, 2);
-			ePos2Dup.AssignKey<std::string>("hello");
-			ePos3.AssignKey<Position>(2, 3);
-			ePosNoKey.Assign<Position>(2, 3);
+			ePos1.SetKey<Position>(1, 2);
+			ePos2.SetKey<Position>(2, 2);
+			ePos2Dup.SetKey<Position>(2, 2);
+			ePos2Dup.SetKey<std::string>("hello");
+			ePos3.SetKey<Position>(2, 3);
+			ePosNoKey.Set<Position>(2, 3);
 		}
 
 		void ExpectEntityFound(ecs::Entity ent, bool found = true)
@@ -99,7 +74,7 @@ namespace test
 		ecs::EntityManager em;
 		ecs::Entity e = em.NewEntity();
 
-		e.AssignKey<std::string>("hello");
+		e.SetKey<std::string>("hello");
 
 		ASSERT_TRUE(e.Has<std::string>());
 		ASSERT_TRUE(e.Has<std::string>("hello"));
@@ -117,10 +92,10 @@ namespace test
 		ecs::EntityManager em;
 		ecs::Entity e = em.NewEntity();
 
-		e.AssignKey<std::string>("hello");
-		ecs::Handle<std::string> name = e.Get<std::string>();
+		e.SetKey<std::string>("hello");
+		const std::string &name = e.Get<std::string>();
 
-		ASSERT_EQ(*name, "hello");
+		ASSERT_EQ(name, "hello");
 	}
 
 	TEST(EcsKeyed, RemoveAllComponents)
@@ -128,13 +103,16 @@ namespace test
 		ecs::EntityManager em;
 		ecs::Entity e = em.NewEntity();
 
-		e.AssignKey<std::string>("hello");
-		e.AssignKey<Position>(1, 2);
+		e.SetKey<std::string>("hello");
+		e.SetKey<Position>(1, 2);
 
 		ASSERT_TRUE(e.Has<std::string>());
 		ASSERT_TRUE(e.Has<Position>());
 
+		positionsDestroyed = 0;
 		e.RemoveAllComponents();
+		// Component is stored as value and also a key, both are destroyed.
+		ASSERT_EQ(positionsDestroyed, 2);
 
 		ASSERT_FALSE(e.Has<std::string>());
 		ASSERT_FALSE(e.Has<Position>());
@@ -148,9 +126,9 @@ namespace test
 			auto name = ent.Get<std::string>();
 			auto position = ent.Get<Position>();
 
-            ASSERT_EQ(*name, "hello");
-            ASSERT_EQ(position->x, 2);
-            ASSERT_EQ(position->y, 2);
+            ASSERT_EQ(name, "hello");
+            ASSERT_EQ(position.x, 2);
+            ASSERT_EQ(position.y, 2);
 
 			entsFound[ent] = true;
 		}
@@ -166,8 +144,8 @@ namespace test
 			// ensure we can retrieve these components
 			auto position = ent.Get<Position>();
 
-            ASSERT_EQ(position->x, 2);
-            ASSERT_EQ(position->y, 2);
+            ASSERT_EQ(position.x, 2);
+            ASSERT_EQ(position.y, 2);
 
 			entsFound[ent] = true;
 		}
@@ -182,8 +160,8 @@ namespace test
 			// ensure we can retrieve these components
 			auto position = ent.Get<Position>();
 
-            ASSERT_EQ(position->x, 2);
-            ASSERT_EQ(position->y, 3);
+            ASSERT_EQ(position.x, 2);
+            ASSERT_EQ(position.y, 3);
 
 			entsFound[ent] = true;
 		}
@@ -216,7 +194,7 @@ namespace test
 	{
 		ecs::EntityManager em;
 		ecs::Entity e1 = em.NewEntity();
-		e1.AssignKey<Position>(1, 2);
+		e1.SetKey<Position>(1, 2);
 
 		int entitiesFound = 0;
 		for (ecs::Entity ent : em.EntitiesWith(Position(1, 2)))
@@ -226,7 +204,7 @@ namespace test
 			if (entitiesFound == 1)
 			{
 				ecs::Entity e2 = em.NewEntity();
-				e2.AssignKey<Position>(Position(1, 2));
+				e2.SetKey<Position>(Position(1, 2));
 			}
 		}
 
@@ -240,10 +218,10 @@ namespace test
 		ecs::EntityManager em;
 
 		ecs::Entity e1 = em.NewEntity();
-		e1.AssignKey<Position>(1, 2);
+		e1.SetKey<Position>(1, 2);
 
 		ecs::Entity e2 = em.NewEntity();
-		e2.AssignKey<Position>(1, 2);
+		e2.SetKey<Position>(1, 2);
 
 		int entitiesFound = 0;
 		for (ecs::Entity ent : em.EntitiesWith(Position(1, 2)))
@@ -270,10 +248,10 @@ namespace test
 		ecs::EntityManager em;
 
 		ecs::Entity e1 = em.NewEntity();
-		e1.AssignKey<Position>(1, 2);
+		e1.SetKey<Position>(1, 2);
 
 		ecs::Entity e2 = em.NewEntity();
-		e2.AssignKey<Position>(1, 2);
+		e2.SetKey<Position>(1, 2);
 
 		int entitiesFound = 0;
 		for (ecs::Entity ent : em.EntitiesWith(Position(1, 2)))
@@ -325,7 +303,7 @@ namespace test
 	{
 		ecs::EntityManager em;
 		ecs::Entity e = em.NewEntity();
-		e.AssignKey<Position>(1, 1);
+		e.SetKey<Position>(1, 1);
 
 		uint64 entitiesMade = 1;
 		const uint64 tooMany = 1000000;
@@ -333,7 +311,7 @@ namespace test
 		while (e.Generation() <= 0 && entitiesMade < tooMany) {
 			e.Destroy();
 			e = em.NewEntity();
-			e.AssignKey<Position>(1, 1);
+			e.SetKey<Position>(1, 1);
 			entitiesMade += 1;
 		}
 

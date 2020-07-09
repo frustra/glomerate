@@ -119,10 +119,11 @@ namespace ecs
 
 		// DO NOT CACHE THIS POINTER, a component's pointer may change over time
 		template <typename ...T>
-		CompType *NewComponent(Entity::Id e, T... args);
+		const CompType &Set(Entity::Id e, T&&... args);
+		void Set(Entity::Id e, CompType &&value);
 
 		// DO NOT CACHE THIS POINTER, a component's pointer may change over time
-		CompType *Get(Entity::Id e);
+		const CompType &Get(Entity::Id e) const;
 		void Remove(Entity::Id e) override;
 		bool HasComponent(Entity::Id e) const override;
 		size_t Size() const override;
@@ -134,7 +135,9 @@ namespace ecs
 
 		struct Storage
 		{
-			Storage(Entity::Id eid, CompType value) : eid(eid), value(value) {}
+			Storage(Entity::Id eid, CompType &&value) : eid(eid), value(std::move(value)) {}
+			template <typename ...T>
+			Storage(Entity::Id eid, T&&... args) : eid(eid), value(std::forward<T>(args)...) {}
 
 			Entity::Id eid;
 			CompType value;
@@ -143,7 +146,6 @@ namespace ecs
 		};
 
 		vector<Storage> components;
-		size_t lastCompIndex;
 		GLOMERATE_MAP_TYPE<eid_t, size_t> entIndexToCompIndex;
 		bool softRemoveMode;
 		std::queue<size_t> softRemoveCompIndexes;
@@ -170,7 +172,7 @@ namespace ecs
 
 		// DO NOT CACHE THIS POINTER, a component's pointer may change over time
 		template <typename ...T>
-		KeyType *NewComponent(Entity::Id e, T... args);
+		const KeyType &Set(Entity::Id e, T&&... args);
 		ComponentPoolEntityCollection KeyedEntities(const KeyType &key);
 		Entity::Id KeyedEntity(const KeyType &key);
 

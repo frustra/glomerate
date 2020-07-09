@@ -175,7 +175,6 @@ namespace ecs
 	template <typename CompType>
 	ComponentPool<CompType>::ComponentPool()
 	{
-		lastCompIndex = static_cast<size_t>(-1);
 		softRemoveMode = false;
 	}
 
@@ -187,36 +186,38 @@ namespace ecs
 
 	template <typename CompType>
 	template <typename ...T>
-	CompType *ComponentPool<CompType>::NewComponent(Entity::Id e, T... args)
+	const CompType &ComponentPool<CompType>::Set(Entity::Id e, T&&... args)
 	{
-		size_t newCompIndex = lastCompIndex + 1;
-		lastCompIndex = newCompIndex;
+		size_t newCompIndex = components.size();
 
-		if (components.size() == newCompIndex)
-		{
-			components.emplace_back(e, CompType(args...));
-		}
-		else
-		{
-			components.at(newCompIndex).value = CompType(args...);
-		}
-
-		components.at(newCompIndex).eid = e;
+		components.emplace_back(e, args...);
 		entIndexToCompIndex[e.Index()] = newCompIndex;
 
-		return &components.at(newCompIndex).value;
+		return components.at(newCompIndex).value;
 	}
 
 	template <typename CompType>
-	CompType *ComponentPool<CompType>::Get(Entity::Id e)
+	void ComponentPool<CompType>::Set(Entity::Id e, CompType &&value)
+	{
+		size_t newCompIndex = components.size();
+
+		components.emplace_back(e, std::move(value));
+		entIndexToCompIndex[e.Index()] = newCompIndex;
+
+		return components.at(newCompIndex).value;
+	}
+
+	template <typename CompType>
+	const CompType &ComponentPool<CompType>::Get(Entity::Id e) const
 	{
 		if (!HasComponent(e))
 		{
-			return nullptr;
+			throw runtime_error("entity does not have a component of type "
+				+ string(typeid(CompType).name()));
 		}
 
 		size_t compIndex = entIndexToCompIndex.at(e.Index());
-		return &components.at(compIndex).value;
+		return components.at(compIndex).value;
 	}
 
 	template <typename CompType>
@@ -243,23 +244,20 @@ namespace ecs
 	template <typename CompType>
 	void ComponentPool<CompType>::remove(size_t compIndex)
 	{
-		if (compIndex < lastCompIndex)
+		if (compIndex < components.size() - 1)
 		{
 			// Swap this component to the end
-			auto validComponent = components.at(lastCompIndex);
-			components.at(lastCompIndex) = components.at(compIndex);
-			components.at(compIndex) = validComponent;
+			auto &validComponent = (components.at(compIndex) = std::move(components.back()));
 
 			// update the entity -> component index mapping of swapped component if it's entity still exists
 			// (Entity could have been deleted while iterating over entities so the component was only soft-deleted till now)
-			eid_t entityIndex = validComponent.eid.Index();
-			if (entIndexToCompIndex.count(entityIndex) > 0)
+			auto it = entIndexToCompIndex.find(validComponent.eid.Index());
+			if (it != entIndexToCompIndex.end())
 			{
-				entIndexToCompIndex.at(entityIndex) = compIndex;
+				it->second = compIndex;
 			}
 		}
-
-		lastCompIndex--;
+		components.pop_back();
 	}
 
 	template <typename CompType>
@@ -284,7 +282,7 @@ namespace ecs
 	template <typename CompType>
 	size_t ComponentPool<CompType>::Size() const
 	{
-		return lastCompIndex + 1;
+		return components.size();
 	}
 
 	template <typename CompType>
@@ -340,22 +338,12 @@ namespace ecs
 
 	template <typename KeyType>
 	template <typename ...T>
-	KeyType *KeyedComponentPool<KeyType>::NewComponent(Entity::Id e, T... args)
+	const KeyType &KeyedComponentPool<KeyType>::Set(Entity::Id e, T&&... args)
 	{
 		// Add the entity to the regular component pool
-		size_t newCompIndex = ComponentPool<KeyType>::lastCompIndex + 1;
-		ComponentPool<KeyType>::lastCompIndex = newCompIndex;
+		size_t newCompIndex = ComponentPool<KeyType>::components.size();
 
-		if (ComponentPool<KeyType>::components.size() == newCompIndex)
-		{
-			ComponentPool<KeyType>::components.emplace_back(e, KeyType(args...));
-		}
-		else
-		{
-			ComponentPool<KeyType>::components.at(newCompIndex).value = KeyType(args...);
-		}
-
-		ComponentPool<KeyType>::components.at(newCompIndex).eid = e;
+		ComponentPool<KeyType>::components.emplace_back(e, KeyType(args...));
 		ComponentPool<KeyType>::entIndexToCompIndex[e.Index()] = newCompIndex;
 
 		// Add the entity to the keyed component pool
@@ -372,7 +360,7 @@ namespace ecs
 			compKeyToCompIndex.emplace(component.value, component.keyedList);
 		}
 
-		return &component.value;
+		return component.value;
 	}
 
 	template <typename KeyType>
@@ -391,12 +379,10 @@ namespace ecs
 		}
 
 
-		if (compIndex < ComponentPool<KeyType>::lastCompIndex)
+		if (compIndex < ComponentPool<KeyType>::components.size() - 1)
 		{
 			// Swap this component to the end
-			auto validComponent = ComponentPool<KeyType>::components.at(ComponentPool<KeyType>::lastCompIndex);
-			ComponentPool<KeyType>::components.at(ComponentPool<KeyType>::lastCompIndex) = componentToRemove;
-			ComponentPool<KeyType>::components.at(compIndex) = validComponent;
+			auto validComponent = (ComponentPool<KeyType>::components.at(compIndex) = std::move(ComponentPool<KeyType>::components.back()));
 
 			// Update the keyed component pool index if necessary
 			if (validComponent.keyedList != nullptr)
@@ -406,14 +392,13 @@ namespace ecs
 
 			// update the entity -> component index mapping of swapped component if it's entity still exists
 			// (Entity could have been deleted while iterating over entities so the component was only soft-deleted till now)
-			eid_t entityIndex = validComponent.eid.Index();
-			if (ComponentPool<KeyType>::entIndexToCompIndex.count(entityIndex) > 0)
+			auto it = ComponentPool<KeyType>::entIndexToCompIndex.find(validComponent.eid.Index());
+			if (it != ComponentPool<KeyType>::entIndexToCompIndex.end())
 			{
-				ComponentPool<KeyType>::entIndexToCompIndex.at(entityIndex) = compIndex;
+				it->second = compIndex;
 			}
 		}
-
-		ComponentPool<KeyType>::lastCompIndex--;
+		ComponentPool<KeyType>::components.pop_back();
 	}
 
 	template <typename KeyType>

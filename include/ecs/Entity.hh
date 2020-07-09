@@ -97,8 +97,6 @@ namespace ecs
 
 		/**
 		 * Remove the given entity from the ECS.
-		 * THIS MAKES NO GUARENTEE to call destructors on components that were assigned
-		 * to this entity.
 		 */
 		void Destroy();
 
@@ -117,7 +115,7 @@ namespace ecs
 		 * Returns a handle to the created component.
 		 */
 		template <typename CompType, typename ...T>
-		Handle<CompType> Assign(T... args);
+		CompType Set(T&&... args);
 
 		/**
 		 * Construct a new keyed component of type "KeyType" with the given arguments
@@ -126,7 +124,13 @@ namespace ecs
 		 * Returns a handle to the created component.
 		 */
 		template <typename KeyType, typename ...T>
-		Handle<KeyType> AssignKey(T... args);
+		KeyType SetKey(T&&... args);
+
+		template <typename CompType>
+		void Set(const CompType &&value);
+
+		template <typename KeyType>
+		void SetKey(const KeyType &&key);
 
 		/**
 		 * Remove the given component type from this entity.
@@ -157,7 +161,7 @@ namespace ecs
 		 * Throws an error if it doesn't have a component of that type.
 		 */
 		template <typename CompType>
-		Handle<CompType> Get();
+		CompType Get() const;
 
 		/**
 		 * Register @callback to be called when an event of type Event

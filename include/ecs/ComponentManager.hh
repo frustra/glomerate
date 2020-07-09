@@ -8,7 +8,6 @@
 #include "ecs/Entity.hh"
 #include "ecs/ComponentStorage.hh"
 #include "ecs/UnrecognizedComponentType.hh"
-#include "ecs/Handle.hh"
 
 #define MAX_COMPONENT_TYPES 64
 
@@ -27,15 +26,16 @@ namespace ecs
 		}
 
 		template <typename CompType, typename ...T>
-		Handle<CompType> Assign(Entity::Id e, T... args);
+		const CompType &Set(Entity::Id e, T&&... args);
 
 		template <typename KeyType, typename ...T>
-		Handle<KeyType> AssignKey(Entity::Id e, T... args);
+		const KeyType &SetKey(Entity::Id e, T&&... args);
 
 		template <typename CompType>
-		void Remove(Entity::Id e);
+		void Set(Entity::Id e, const CompType &comp);
 
-		void RemoveAll(Entity::Id e);
+		template <typename KeyType>
+		void SetKey(Entity::Id e, const KeyType &key);
 
 		template <typename CompType>
 		bool Has(Entity::Id e) const;
@@ -44,7 +44,15 @@ namespace ecs
 		bool Has(Entity::Id e, const KeyType &key) const;
 
 		template <typename CompType>
-		Handle<CompType> Get(Entity::Id e);
+		const CompType &Get(Entity::Id e) const;
+
+		template <typename CompType>
+		const CompType &Swap(Entity::Id e, const CompType &comp);
+
+		template <typename CompType>
+		void Remove(Entity::Id e);
+
+		void RemoveAll(Entity::Id e);
 
 		size_t ComponentTypeCount() const;
 

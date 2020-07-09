@@ -2,7 +2,6 @@
 
 #include "ecs/EntityManager.hh"
 #include "ecs/Entity.hh"
-#include "ecs/Handle.hh"
 #include "ecs/EntityDestruction.hh"
 #include <type_traits>
 
@@ -10,15 +9,27 @@
 namespace ecs
 {
 	template <typename CompType, typename ...T>
-	Handle<CompType> EntityManager::Assign(Entity::Id e, T... args)
+	CompType EntityManager::Set(Entity::Id e, T&&... args)
 	{
-		return compMgr.Assign<CompType>(e, args...);
+		return compMgr.Set<CompType>(e, args...);
 	}
 
 	template <typename KeyType, typename ...T>
-	Handle<KeyType> EntityManager::AssignKey(Entity::Id e, T... args)
+	KeyType EntityManager::SetKey(Entity::Id e, T&&... args)
 	{
-		return compMgr.AssignKey<KeyType>(e, args...);
+		return compMgr.SetKey<KeyType>(e, args...);
+	}
+
+	template <typename CompType>
+	void EntityManager::Set(Entity::Id e, const CompType &&value)
+	{
+		compMgr.Set<CompType>(e, std::move(value));
+	}
+
+	template <typename KeyType>
+	void EntityManager::SetKey(Entity::Id e, const KeyType &&key)
+	{
+		compMgr.SetKey<KeyType>(e, std::move(key));
 	}
 
 	template <typename CompType>
@@ -40,7 +51,7 @@ namespace ecs
 	}
 
 	template <typename CompType>
-	Handle<CompType> EntityManager::Get(Entity::Id e)
+	CompType EntityManager::Get(Entity::Id e) const
 	{
 		return compMgr.Get<CompType>(e);
 	}

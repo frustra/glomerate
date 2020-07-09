@@ -43,7 +43,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
 # Build tests
 ################################################
 
-OPTION(GLOMERATE_BUILD_TESTS "Build test executables" OFF)
+OPTION(GLOMERATE_BUILD_TESTS "Build test executables" ON)
 IF (GLOMERATE_BUILD_TESTS)
 	set(GOOGLETEST_DIR ${EXT_PATH}/googletest/googletest)
 	add_subdirectory(${EXT_PATH}/googletest)

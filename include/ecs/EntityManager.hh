@@ -11,7 +11,6 @@
 #include "ecs/Common.hh"
 #include "ComponentManager.hh"
 #include "Entity.hh"
-#include "Handle.hh"
 #include "Subscription.hh"
 
 /**
@@ -76,8 +75,6 @@ namespace ecs
 
 		/**
 		 * Remove the given entity from the ECS.
-		 * THIS MAKES NO GUARENTEE to call destructors on components that were assigned
-		 * to this entity.
 		 */
 		void Destroy(Entity::Id e);
 
@@ -101,7 +98,7 @@ namespace ecs
 		 * Returns a handle to the created component.
 		 */
 		template <typename CompType, typename ...T>
-		Handle<CompType> Assign(Entity::Id e, T... args);
+		CompType Set(Entity::Id e, T&&... args);
 
 		/**
 		 * Construct a new keyed component of type "KeyType" with the given arguments
@@ -110,7 +107,13 @@ namespace ecs
 		 * Returns a handle to the created component.
 		 */
 		template <typename KeyType, typename ...T>
-		Handle<KeyType> AssignKey(Entity::Id e, T... args);
+		KeyType SetKey(Entity::Id e, T&&... args);
+
+		template <typename CompType>
+		void Set(Entity::Id e, const CompType &&value);
+
+		template <typename KeyType>
+		void SetKey(Entity::Id e, const KeyType &&key);
 
 		/**
 		 * Remove the component of type "CompType" from this entity.
@@ -141,7 +144,7 @@ namespace ecs
 		 * Throws an error if it doesn't have a component of that type.
 		 */
 		template <typename CompType>
-		Handle<CompType> Get(Entity::Id e);
+		CompType Get(Entity::Id e) const;
 
 		/**
 		 * Register the given type as a valid "Component type" in the system.
@@ -266,6 +269,8 @@ namespace ecs
 	protected:
 		std::recursive_mutex signalLock;
 
+		ComponentManager compMgr;
+
 	private:
 		/**
 		 * The current (if index is alive) or next (if index is dead) generation
@@ -284,8 +289,6 @@ namespace ecs
 		 * recycled in this->freeEntityIndexes (false).
 		 */
 		vector<bool> indexIsAlive;
-
-		ComponentManager compMgr;
 
 		/**
 		 * map the typeid(T) of a const component type, T, to the "index" of that key map.
@@ -344,5 +347,6 @@ namespace ecs
 		void registerNonEntityEventType();
 
 		friend Subscription;
+		friend Entity;
 	};
 };

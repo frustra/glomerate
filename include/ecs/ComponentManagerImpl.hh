@@ -11,7 +11,7 @@ namespace ecs
 	}
 
 	template <typename CompType, typename ...T>
-	Handle<CompType> ComponentManager::Assign(Entity::Id e, T... args)
+	const CompType &ComponentManager::Set(Entity::Id e, T&&... args)
 	{
 		std::type_index compType = typeid(CompType);
 
@@ -34,12 +34,11 @@ namespace ecs
 		compMask.set(compIndex);
 
 		auto componentPool = static_cast<ComponentPool<CompType>*>(componentPools.at(compIndex));
-		componentPool->NewComponent(e, args...);
-		return Handle<CompType>(e, componentPool);
+		return componentPool->Set(e, args...);
 	}
 
 	template <typename KeyType, typename ...T>
-	Handle<KeyType> ComponentManager::AssignKey(Entity::Id e, T... args)
+	const KeyType &ComponentManager::SetKey(Entity::Id e, T&&... args)
 	{
 		std::type_index compType = typeid(KeyType);
 
@@ -62,8 +61,7 @@ namespace ecs
 		compMask.set(compIndex);
 
 		auto componentPool = dynamic_cast<KeyedComponentPool<KeyType>*>(componentPools.at(compIndex));
-		componentPool->NewComponent(e, args...);
-		return Handle<KeyType>(e, componentPool);
+		return componentPool->Set(e, args...);
 	}
 
 	template <typename CompType>
@@ -114,13 +112,13 @@ namespace ecs
 		if (entCompMasks.at(e.Index())[compIndex])
 		{
 			auto *compPool = dynamic_cast<KeyedComponentPool<KeyType>*>(componentPools.at(compIndex));
-			return key == *compPool->Get(e);
+			return key == compPool->Get(e);
 		}
 		return false;
 	}
 
 	template <typename CompType>
-	Handle<CompType> ComponentManager::Get(Entity::Id e)
+	const CompType &ComponentManager::Get(Entity::Id e) const
 	{
 		if (!Has<CompType>(e))
 		{
@@ -130,7 +128,7 @@ namespace ecs
 
 		auto compIndex = compTypeToCompIndex.at(typeid(CompType));
 		auto *compPool = static_cast<ComponentPool<CompType>*>(componentPools.at(compIndex));
-		return Handle<CompType>(e, compPool);
+		return compPool->Get(e);
 	}
 
 	template <typename CompType>
