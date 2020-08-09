@@ -87,6 +87,14 @@ namespace ecs
 		void DestroyAll();
 
 		/**
+		 * Calls Destroy() on all Entities that match a specific KeyType value.
+		 * 
+		 * This function will only find components added with the AssignKey() function.
+		 */
+		template <typename KeyType, typename... CompTypes>
+		void DestroyAllWith(const KeyType &key);
+
+		/**
 		 * Check if the entity is still valid in the system.
 		 * An entity is invalid if it is not currently present in the system.
 		 * Since Entity::Id and Entity objects are often passed by value it is useful
