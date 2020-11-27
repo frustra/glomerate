@@ -205,6 +205,17 @@ namespace ecs
 		}
 	}
 
+	template<typename KeyType, typename... CompTypes>
+	inline void EntityManager::DestroyAllWith(const KeyType &key) 
+	{
+		auto entityCollection = EntitiesWith<KeyType, CompTypes...>(key);
+
+		for (auto ent : entityCollection) 
+		{
+			ent.Destroy();
+		}
+	}
+
 	inline bool EntityManager::Valid(Entity::Id e) const
 	{
 		return e && e.Generation() == entIndexToGen.at(e.Index());
